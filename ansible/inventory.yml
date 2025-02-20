@@ -5,15 +5,8 @@ all:
     west:
       kubeconfig: "{{ inventory_dir }}/kubeconfigs/west"
       namespace: west
+      resources_path: "{{ playbook_dir }}/kubernetes/west.yaml"
     east:
       kubeconfig: "{{ inventory_dir }}/kubeconfigs/east"
       namespace: east
-      links:
-        - host: west
-      services:
-        backend:
-          ports:
-            - 8080
-          targets:
-            - type: deployment
-              name: backend
+      resources_path: "{{ playbook_dir }}/kubernetes/east.yaml"

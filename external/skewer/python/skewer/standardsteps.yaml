@@ -17,67 +17,20 @@
 # under the License.
 #
 
-general/install_the_skupper_command_line_tool:
-  title: Install the Skupper command-line tool
+platform/install_skupper_on_your_kubernetes_cluster:
+  old_name: kubernetes/install_skupper_on_your_cluster
+  title: Install Skupper on your Kubernetes cluster
+  platform: kubernetes
   preamble: |
-    This example uses the Skupper command-line tool to deploy Skupper.
-    You need to install the `skupper` command only once for each
-    development environment.
+    Using Skupper on Kubernetes requires the installation of the
+    Skupper custom resource definitions (CRDs) and the Skupper
+    controller.
 
-    On Linux or Mac, you can use the install script (inspect it
-    [here][install-script]) to download and extract the command:
-
-    ~~~ shell
-    curl https://skupper.io/install.sh | sh
-    ~~~
-
-    The script installs the command under your home directory.  It
-    prompts you to add the command to your path if necessary.
-
-    For Windows and other installation options, see [Installing
-    Skupper][install-docs].
-
-    [install-script]: https://github.com/skupperproject/skupper-website/blob/main/input/install.sh
-    [install-docs]: https://skupper.io/install/
-general/link_your_sites:
-  title: Link your sites
-  preamble: |
-    A Skupper _link_ is a channel for communication between two sites.
-    Links serve as a transport for application connections and
-    requests.
-
-    Creating a link requires use of two `skupper` commands in
-    conjunction, `skupper token create` and `skupper link create`.
-
-    The `skupper token create` command generates a secret token that
-    signifies permission to create a link.  The token also carries the
-    link details.  Then, in a remote site, The `skupper link
-    create` command uses the token to create a link to the site
-    that generated it.
-
-    **Note:** The link token is truly a *secret*.  Anyone who has the
-    token can link to your site.  Make sure that only those you trust
-    have access to it.
-
-    First, use `skupper token create` in @site0@ to generate the
-    token.  Then, use `skupper link create` in @site1@ to link the
-    sites.
+    Use `kubectl apply` with the Skupper installation YAML to install
+    the CRDs and controller.
   commands:
-    "0":
-      - run: skupper token create ~/secret.token
-        output: Token written to ~/secret.token
-    "1":
-      - run: skupper link create ~/secret.token
-        output: |
-          Site configured to link to <endpoint> (name=link1)
-          Check the status of the link using 'skupper link status'.
-      - run: skupper link status --wait 60
-        apply: test
-  postamble: |
-    If your terminal sessions are on different machines, you may need
-    to use `scp` or a similar tool to transfer the token securely.  By
-    default, tokens expire after a single use or 15 minutes after
-    creation.
+    "*":
+      - run: kubectl apply -f https://github.com/skupperproject/skupper/releases/download/2.0.0-preview-2/skupper-setup-cluster-scope.yaml
 general/cleaning_up:
   name: cleaning_up
   title: Cleaning up
@@ -87,7 +40,7 @@ general/cleaning_up:
     the following commands.
   commands:
     "*":
-      - run: skupper delete
+      - run: kubectl delete namespace west east
 kubernetes/set_up_your_clusters:
   title: Set up your clusters
   platform: kubernetes

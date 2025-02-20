@@ -24,10 +24,10 @@ overview: |
   services without exposing the backend to the public internet.
 
   [hello-world]: https://github.com/skupperproject/skupper-example-hello-world
-  [skupper-ansible]: https://galaxy.ansible.com/ui/repo/published/skupper/network/
+  [skupper-ansible]: https://galaxy.ansible.com/ui/repo/published/skupper/v2/
 prerequisites: |
   @default@
-  * Ansible, version 2.14 or later ([installation guide](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html))
+  * Ansible, version 2.15 or later ([installation guide](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html))
 sites:
   west:
     title: Terminal
@@ -44,30 +44,10 @@ steps:
   - title: Install the Skupper Ansible collection
     preamble: |
       Use the `ansible-galaxy` command to install the
-      `skupper.network` collection.
+      `skupper.v2` collection.
     commands:
       west:
-        - run: ansible-galaxy collection install skupper.network
-  - title: Install the Skupper command-line tool
-    preamble: |
-      The Skupper Ansible collection uses the Skupper command-line
-      tool to deploy Skupper.
-
-      On Linux or Mac, you can use the install script (inspect it
-      [here][install-script]) to download and extract the command:
-
-      ~~~ shell
-      curl https://skupper.io/install.sh | sh
-      ~~~
-
-      The script installs the command under your home directory.  It
-      prompts you to add the command to your path if necessary.
-
-      For Windows and other installation options, see [Installing
-      Skupper][install-docs].
-
-      [install-script]: https://github.com/skupperproject/skupper-website/blob/main/input/install.sh
-      [install-docs]: https://skupper.io/install/
+        - run: ansible-galaxy collection install skupper.v2
   - title: Set up your clusters
     preamble: |
       This example uses two clusters.  The clusters are accessed using
@@ -103,8 +83,9 @@ steps:
   - title: Inspect the inventory file
     preamble: |
       Before we start running commands, let's examine the inventory
-      file.  It's here that we can define Skupper sites, links, and
-      exposed services.
+      file.  Although it is not mandatory to have an inventory file, you can have
+      the kubeconfig file, the namespace and the path to the resources defined per
+      inventory host.
 
       [ansible/inventory.yml](ansible/inventory.yml):
 
@@ -116,27 +97,12 @@ steps:
           west:
             kubeconfig: "{{ inventory_dir }}/kubeconfigs/west"
             namespace: west
+            resources_path: "{{ playbook_dir }}/kubernetes/west.yaml"
           east:
             kubeconfig: "{{ inventory_dir }}/kubeconfigs/east"
             namespace: east
-            links:
-              - host: west
-            services:
-              backend:
-                ports:
-                  - 8080
-                targets:
-                  - type: deployment
-                    name: backend
+            resources_path: "{{ playbook_dir }}/kubernetes/east.yaml"
       ~~~
-
-      Our example has two sites, West and East, enumerated under
-      `hosts`.
-
-      The `links` attribute on host `east` defines a link from East to West.
-
-      The `services` attribute on host `east` exposes the backend on
-      East so the frontend in West can access it.
 
       The playbooks that follow use this inventory data to set up and
       tear down the Skupper network.
@@ -152,28 +118,53 @@ steps:
       [ansible/setup.yml](ansible/setup.yml):
 
       ~~~ yaml
-      - hosts: west
+      - hosts: all
+        connection: local
         tasks:
-          - command: "kubectl apply -f {{ playbook_dir }}/kubernetes/west.yaml"
+          - name: Apply site resources
+            skupper.v2.resource:
+              path: "{{ resources_path }}"
+              kubeconfig: "{{ kubeconfig }}"
+              namespace: "{{ namespace }}"
+
+      - hosts: west
+        connection: local
+        tasks:
+          - name: Create a token to the west site
+            skupper.v2.token:
+              name: "west"
+              kubeconfig: "{{ kubeconfig }}"
+              namespace: "{{ namespace }}"
+            register: accesstoken
 
       - hosts: east
+        connection: local
         tasks:
-          - command: "kubectl apply -f {{ playbook_dir }}/kubernetes/east.yaml"
-
-      - hosts: all
-        collections:
-          - skupper.network
-        tasks:
-          - import_role:
-              name: skupper
+          - name: Link east site to west
+            skupper.v2.resource:
+              def: "{{ hostvars['west']['accesstoken']['token'] }}"
+              kubeconfig: "{{ kubeconfig }}"
+              namespace: "{{ namespace }}"
       ~~~
 
-      The two `kubectl` tasks deploy our example application.
+      The first task applies all needed resources on both west and east namespaces.
+      Those resources contain the whole example definition, including: the workloads (backend and frontend apps)
+      along with all the Skupper V2 resources needed.
+      We apply those resources using the `skupper.v2.resource` module, see the
+      [Resource module documentation][resource-doc].
 
-      The last task is to use the `skupper` role from the
-      `skupper.network` collection to deploy the Skupper network.
+      The second task is performed against the west inventory host only and it generates
+      an AccessGrant named `west`, returning its respective AccessToken, which is registered
+      to the hostvariable `accesstoken`. This task uses the `skupper.v2.token` module for that, see
+      the [Token module documentation][token-doc].
+
+      The last task is to link the east site to the west, using the `skupper.v2.resource` module again,
+      and apply the AccessToken registered into the west host variables as `accesstoken.token`.
 
       Use the `ansible-playbook` command to run the playbook:
+
+      [resource-doc]: https://galaxy.ansible.com/ui/repo/published/skupper/v2/content/module/resource/
+      [token-doc]: https://galaxy.ansible.com/ui/repo/published/skupper/v2/content/module/token/
     commands:
       west:
         - run: ansible-playbook -i ansible/inventory.yml ansible/setup.yml
@@ -205,23 +196,19 @@ steps:
 
       ~~~ yaml
       - hosts: all
-        collections:
-          - skupper.network
+        connection: local
         tasks:
-        - import_role:
-            name: skupper_delete
-
-      - hosts: west
-        tasks:
-          - command: "kubectl delete -f {{ playbook_dir }}/kubernetes/west.yaml"
-
-      - hosts: east
-        tasks:
-          - command: "kubectl delete -f {{ playbook_dir }}/kubernetes/east.yaml"
+          - name: Apply site resources
+            skupper.v2.resource:
+              state: absent
+              path: "{{ resources_path }}"
+              kubeconfig: "{{ kubeconfig }}"
+              namespace: "{{ namespace }}"
       ~~~
 
-      The `skupper_delete` role from the `skupper.network` collection
-      removes all the Skupper resources.
+      The `skupper.v2.resource` modules from the `skupper.v2` collection
+      is called for both west and east resources using action `absent`, which
+      removes the definitins provided through the YAML files.
     commands:
       west:
         - run: ansible-playbook -i ansible/inventory.yml ansible/teardown.yml

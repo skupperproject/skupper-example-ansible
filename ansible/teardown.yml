@@ -1,14 +1,9 @@
 - hosts: all
-  collections:
-    - skupper.network
+  connection: local
   tasks:
-  - import_role:
-      name: skupper_delete
-
-- hosts: west
-  tasks:
-    - command: "kubectl delete -f {{ playbook_dir }}/kubernetes/west.yaml"
-
-- hosts: east
-  tasks:
-    - command: "kubectl delete -f {{ playbook_dir }}/kubernetes/east.yaml"
+    - name: Apply site resources
+      skupper.v2.resource:
+        state: absent
+        path: "{{ resources_path }}"
+        kubeconfig: "{{ kubeconfig }}"
+        namespace: "{{ namespace }}"

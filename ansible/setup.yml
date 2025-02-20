@@ -1,14 +1,27 @@
-- hosts: west
+- hosts: all
+  connection: local
   tasks:
-    - command: "kubectl apply -f {{ playbook_dir }}/kubernetes/west.yaml"
+    - name: Apply site resources
+      skupper.v2.resource:
+        path: "{{ resources_path }}"
+        kubeconfig: "{{ kubeconfig }}"
+        namespace: "{{ namespace }}"
+
+- hosts: west
+  connection: local
+  tasks:
+    - name: Create a token to the west site
+      skupper.v2.token:
+        name: "west"
+        kubeconfig: "{{ kubeconfig }}"
+        namespace: "{{ namespace }}"
+      register: accesstoken
 
 - hosts: east
+  connection: local
   tasks:
-    - command: "kubectl apply -f {{ playbook_dir }}/kubernetes/east.yaml"
-
-- hosts: all
-  collections:
-    - skupper.network
-  tasks:
-    - import_role:
-        name: skupper
+    - name: Link east site to west
+      skupper.v2.resource:
+        def: "{{ hostvars['west']['accesstoken']['token'] }}"
+        kubeconfig: "{{ kubeconfig }}"
+        namespace: "{{ namespace }}"

@@ -22,7 +22,7 @@ example_suite: |
     different ways you can use [Skupper][website] to connect services
     across cloud providers, data centers, and edge sites.
 
-    [website]: https://skupper.io/
+    [website]: https://skupper.io/v2
     [examples]: https://skupper.io/examples/index.html
 prerequisites: |
     * The `kubectl` command-line tool, version 1.15 or later
