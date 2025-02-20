@@ -25,3 +25,19 @@ spec:
           image: quay.io/skupper/hello-world-backend
           ports:
             - containerPort: 8080
+---
+apiVersion: skupper.io/v2alpha1
+kind: Site
+metadata:
+  name: east
+  namespace: east
+---
+apiVersion: skupper.io/v2alpha1
+kind: Connector
+metadata:
+  name: backend
+  namespace: east
+spec:
+  routingKey: backend
+  port: 8080
+  selector: app=backend

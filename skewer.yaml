@@ -180,9 +180,9 @@ steps:
         - run: export KUBECONFIG=$PWD/ansible/kubeconfigs/west
           apply: readme
         - await_resource: deployment/frontend
-        - run: kubectl port-forward deployment/frontend 8080:8080
+        - run: kubectl -n west port-forward deployment/frontend 8080:8080
           apply: readme
-        - run: kubectl port-forward deployment/frontend 8080:8080 > /dev/null &
+        - run: kubectl -n west port-forward deployment/frontend 8080:8080 > /dev/null &
           apply: test
         - await_port: 8080
         - run: curl http://localhost:8080/api/health

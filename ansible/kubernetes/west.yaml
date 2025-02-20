@@ -25,3 +25,21 @@ spec:
           image: quay.io/skupper/hello-world-frontend
           ports:
             - containerPort: 8080
+---
+apiVersion: skupper.io/v2alpha1
+kind: Site
+metadata:
+  name: west
+  namespace: west
+spec:
+  linkAccess: default
+---
+apiVersion: skupper.io/v2alpha1
+kind: Listener
+metadata:
+  name: backend
+  namespace: west
+spec:
+  port: 8080
+  host: backend
+  routingKey: backend
