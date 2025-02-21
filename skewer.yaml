@@ -48,6 +48,8 @@ steps:
     commands:
       west:
         - run: ansible-galaxy collection install skupper.v2
+  - standard: platform/access_your_kubernetes_clusters
+  - standard: platform/install_skupper_on_your_kubernetes_clusters
   - title: Set up your clusters
     preamble: |
       This example uses two clusters.  The clusters are accessed using
