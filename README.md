@@ -10,7 +10,7 @@ This example is part of a [suite of examples][examples] showing the
 different ways you can use [Skupper][website] to connect services
 across cloud providers, data centers, and edge sites.
 
-[website]: https://skupper.io/v2
+[website]: https://skupper.io/
 [examples]: https://skupper.io/examples/index.html
 
 #### Contents
@@ -18,11 +18,13 @@ across cloud providers, data centers, and edge sites.
 * [Overview](#overview)
 * [Prerequisites](#prerequisites)
 * [Step 1: Install the Skupper Ansible collection](#step-1-install-the-skupper-ansible-collection)
-* [Step 2: Set up your clusters](#step-2-set-up-your-clusters)
-* [Step 3: Inspect the inventory file](#step-3-inspect-the-inventory-file)
-* [Step 4: Run the setup playbook](#step-4-run-the-setup-playbook)
-* [Step 5: Access the frontend](#step-5-access-the-frontend)
-* [Step 6: Run the teardown playbook](#step-6-run-the-teardown-playbook)
+* [Step 2: Access your Kubernetes clusters](#step-2-access-your-kubernetes-clusters)
+* [Step 3: Install Skupper on your Kubernetes clusters](#step-3-install-skupper-on-your-kubernetes-clusters)
+* [Step 4: Set up your clusters](#step-4-set-up-your-clusters)
+* [Step 5: Inspect the inventory file](#step-5-inspect-the-inventory-file)
+* [Step 6: Run the setup playbook](#step-6-run-the-setup-playbook)
+* [Step 7: Access the frontend service](#step-7-access-the-frontend-service)
+* [Step 8: Run the teardown playbook](#step-8-run-the-teardown-playbook)
 * [Next steps](#next-steps)
 * [About this example](#about-this-example)
 
@@ -55,14 +57,27 @@ services without exposing the backend to the public internet.
 
 ## Prerequisites
 
-* The `kubectl` command-line tool, version 1.15 or later
-  ([installation guide][install-kubectl])
-
 * Access to at least one Kubernetes cluster, from [any provider you
-  choose][kube-providers]
+  choose][kube-providers].
 
-[install-kubectl]: https://kubernetes.io/docs/tasks/tools/install-kubectl/
+* The `kubectl` command-line tool, version 1.15 or later
+  ([installation guide][install-kubectl]).
+
+* The `skupper` command-line tool, version 2.0 or later.  On Linux
+  or Mac, you can use the install script (inspect it
+  [here][cli-install-script]) to download and extract the command:
+
+  ~~~ shell
+  curl https://skupper.io/install.sh | sh -s -- --version 2.0.0-preview-2
+  ~~~
+
+  See [Installing the Skupper CLI][cli-install-docs] for more
+  information.
+
 [kube-providers]: https://skupper.io/start/kubernetes.html
+[install-kubectl]: https://kubernetes.io/docs/tasks/tools/install-kubectl/
+[cli-install-script]: https://github.com/skupperproject/skupper-website/blob/main/input/install.sh
+[cli-install-docs]: https://skupper.io/install/
 * Ansible, version 2.15 or later ([installation guide](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html))
 
 ## Step 1: Install the Skupper Ansible collection
@@ -76,7 +91,61 @@ _**Terminal:**_
 ansible-galaxy collection install skupper.v2
 ~~~
 
-## Step 2: Set up your clusters
+## Step 2: Access your Kubernetes clusters
+
+Skupper is designed for use with multiple Kubernetes clusters.
+The `skupper` and `kubectl` commands use your
+[kubeconfig][kubeconfig] and current context to select the cluster
+and namespace where they operate.
+
+[kubeconfig]: https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
+
+This example uses multiple cluster contexts at once. The
+`KUBECONFIG` environment variable tells `skupper` and `kubectl`
+which kubeconfig to use.
+
+For each cluster, open a new terminal window.  In each terminal,
+set the `KUBECONFIG` environment variable to a different path and
+log in to your cluster.
+
+_**Terminal:**_
+
+~~~ shell
+export KUBECONFIG=$PWD/ansible/kubeconfigs/west
+<provider-specific login command>
+~~~
+
+_**East:**_
+
+~~~ shell
+export KUBECONFIG=$PWD/ansible/kubeconfigs/east
+<provider-specific login command>
+~~~
+
+**Note:** The login procedure varies by provider.
+
+## Step 3: Install Skupper on your Kubernetes clusters
+
+Using Skupper on Kubernetes requires the installation of the
+Skupper custom resource definitions (CRDs) and the Skupper
+controller.
+
+For each cluster, use `kubectl apply` with the Skupper
+installation YAML to install the CRDs and controller.
+
+_**Terminal:**_
+
+~~~ shell
+kubectl apply -f https://skupper.io/v2/install.yaml
+~~~
+
+_**East:**_
+
+~~~ shell
+kubectl apply -f https://skupper.io/v2/install.yaml
+~~~
+
+## Step 4: Set up your clusters
 
 This example uses two clusters.  The clusters are accessed using
 two kubeconfig files:
@@ -110,7 +179,7 @@ export KUBECONFIG=$PWD/ansible/kubeconfigs/east
 # Enter your provider-specific login command for cluster 2
 ~~~
 
-## Step 3: Inspect the inventory file
+## Step 5: Inspect the inventory file
 
 Before we start running commands, let's examine the inventory
 file.  Although it is not mandatory to have an inventory file, you can have
@@ -142,7 +211,7 @@ inventory guide][ansible-inventory].
 
 [ansible-inventory]: https://docs.ansible.com/ansible/latest/inventory_guide/index.html
 
-## Step 4: Run the setup playbook
+## Step 6: Run the setup playbook
 
 Now let's look at the setup playbook.
 
@@ -214,7 +283,7 @@ west             : ok=34   changed=12   unreachable=0    failed=0    skipped=69 
 east             : ok=34   changed=13   unreachable=0    failed=0    skipped=69   rescued=0    ignored=0
 ~~~
 
-## Step 5: Access the frontend
+## Step 7: Access the frontend service
 
 In order to use and test the application, we need external access
 to the frontend.
@@ -226,13 +295,13 @@ _**Terminal:**_
 
 ~~~ shell
 export KUBECONFIG=$PWD/ansible/kubeconfigs/west
-kubectl port-forward deployment/frontend 8080:8080
+kubectl -n west port-forward deployment/frontend 8080:8080
 ~~~
 
 You can now access the web interface by navigating to
 [http://localhost:8080](http://localhost:8080) in your browser.
 
-## Step 6: Run the teardown playbook
+## Step 8: Run the teardown playbook
 
 To clean everything up, run the teardown playbook.
 

@@ -28,6 +28,13 @@ __all__ = [
 standard_text = read_yaml(join(get_parent_dir(__file__), "standardtext.yaml"))
 standard_steps = read_yaml(join(get_parent_dir(__file__), "standardsteps.yaml"))
 
+standard_steps_by_old_name = dict()
+
+for name, data in standard_steps.items():
+    if "old_name" in data:
+        data["new_name"] = name
+        standard_steps_by_old_name[data["old_name"]] = data
+
 def check_environment():
     check_program("base64")
     check_program("curl")
@@ -210,10 +217,8 @@ def pause_for_demo(model):
 
     if first_site.platform == "kubernetes":
         with first_site:
-            if resource_exists("service/frontend"):
-                if get_resource_json("service/frontend", ".spec.type") == "LoadBalancer":
-                    frontend_host = await_ingress("service/frontend")
-                    frontend_url = f"http://{frontend_host}:8080/"
+            if resource_exists("deployment/frontend"):
+                frontend_url = f"http://localhost:8080/"
 
             if resource_exists("secret/skupper-console-users"):
                 console_host = await_ingress("service/skupper")
@@ -268,15 +273,14 @@ def print_debug_output(model):
                 run("kubectl get events", check=False)
 
             run("skupper version", check=False)
-            run("skupper status", check=False)
+            run("skupper site status", check=False)
             run("skupper link status", check=False)
-            run("skupper service status", check=False)
-            run("skupper network status", check=False)
-            run("skupper debug events", check=False)
+            run("skupper listener status", check=False)
+            run("skupper connector status", check=False)
 
             if site.platform == "kubernetes":
                 run("kubectl logs deployment/skupper-router", check=False)
-                run("kubectl logs deployment/skupper-service-controller", check=False)
+                # run("kubectl logs deployment/skupper-service-controller", check=False)
 
     print("-- End of debug output")
 
@@ -308,9 +312,9 @@ def generate_readme(skewer_file, output_file):
         if not condition:
             return
 
-        fragment = string_replace(heading, r"[ -]", "_")
-        fragment = string_replace(fragment, r"[\W]", "")
-        fragment = string_replace(fragment, "_", "-")
+        fragment = string_replace_re(heading, r"[ -]", "_")
+        fragment = string_replace_re(fragment, r"[\W]", "")
+        fragment = fragment.replace("_", "-")
         fragment = fragment.lower()
 
         out.append(f"* [{heading}](#{fragment})")
@@ -437,7 +441,13 @@ def apply_standard_steps(model):
         try:
             standard_step_data = standard_steps[standard_step_name]
         except KeyError:
-            fail(f"Standard step '{standard_step_name}' not found")
+            try:
+                standard_step_data = standard_steps_by_old_name[standard_step_name]
+                new_name = standard_step_data["new_name"]
+
+                warning(f"Step '{standard_step_name}' has a new name: '{new_name}'")
+            except KeyError:
+                fail(f"Standard step '{standard_step_name}' not found")
 
         del step.data["standard"]
 
@@ -519,13 +529,13 @@ def get_github_owner_repo():
     result = parse_url(url)
 
     if result.scheme == "" and result.path.startswith("git@github.com:"):
-        path = remove_prefix(result.path, "git@github.com:")
-        path = remove_suffix(path, ".git")
+        path = result.path.removeprefix("git@github.com:")
+        path = path.removesuffix(".git")
 
         return path.split("/", 1)
 
     if result.scheme in ("http", "https") and result.netloc == "github.com":
-        path = remove_prefix(result.path, "/")
+        path = result.path.removeprefix("/")
 
         return path.split("/", 1)
 
