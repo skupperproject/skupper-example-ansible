@@ -52,7 +52,11 @@ Skupper enables you to place the backend in one cluster and the
 frontend in another and maintain connectivity between the two
 services without exposing the backend to the public internet.
 
-[hello-world]: https://github.com/skupperproject/skupper-example-hello-world
+The [Skupper Ansible collection][skupper-ansible] is used in this example
+to connect two sites running on Kubernetes, but the collection can also be
+used to manage the lifecycle of sites running on Podman, Docker or Linux.
+
+[hello-world]: https://github.com/skupperproject/skupper-example-hello-world/tree/v2/
 [skupper-ansible]: https://galaxy.ansible.com/ui/repo/published/skupper/v2/
 
 ## Prerequisites
@@ -255,11 +259,11 @@ We apply those resources using the `skupper.v2.resource` module, see the
 
 The second task is performed against the west inventory host only and it generates
 an AccessGrant named `west`, returning its respective AccessToken, which is registered
-to the hostvariable `accesstoken`. This task uses the `skupper.v2.token` module for that, see
+to the host variable `accesstoken`. This task uses the `skupper.v2.token` module for that, see
 the [Token module documentation][token-doc].
 
 The last task is to link the east site to the west, using the `skupper.v2.resource` module again,
-and apply the AccessToken registered into the west host variables as `accesstoken.token`.
+and applying the AccessToken registered into the west host variables as `accesstoken.token`.
 
 Use the `ansible-playbook` command to run the playbook:
 
@@ -277,11 +281,20 @@ _Sample output:_
 ~~~ console
 $ ansible-playbook -i ansible/inventory.yml ansible/setup.yml
 [...]
-
 PLAY RECAP *********************************************************************************************
-west             : ok=34   changed=12   unreachable=0    failed=0    skipped=69   rescued=0    ignored=0
-east             : ok=34   changed=13   unreachable=0    failed=0    skipped=69   rescued=0    ignored=0
+east             : ok=4    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+west             : ok=4    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
 ~~~
+
+**Note:** The collection also requires some Python modules to be present
+on the target node, in case you have problems, you will need to install
+the [collection requirements][collection-requirements], in example:
+
+~~~
+pip install -r https://raw.githubusercontent.com/skupperproject/skupper-ansible/refs/heads/main/requirements.txt
+~~~
+
+[collection-requirements]: https://raw.githubusercontent.com/skupperproject/skupper-ansible/refs/heads/main/requirements.txt
 
 ## Step 7: Access the frontend service
 
@@ -311,7 +324,7 @@ To clean everything up, run the teardown playbook.
 - hosts: all
   connection: local
   tasks:
-    - name: Apply site resources
+    - name: Delete site resources
       skupper.v2.resource:
         state: absent
         path: "{{ resources_path }}"
@@ -321,7 +334,7 @@ To clean everything up, run the teardown playbook.
 
 The `skupper.v2.resource` modules from the `skupper.v2` collection
 is called for both west and east resources using action `absent`, which
-removes the definitins provided through the YAML files.
+removes the definitions provided through the YAML files.
 
 _**Terminal:**_
 
@@ -336,8 +349,8 @@ $ ansible-playbook -i ansible/inventory.yml ansible/teardown.yml
 [...]
 
 PLAY RECAP *********************************************************************************************
-west             : ok=9    changed=2    unreachable=0    failed=0    skipped=3    rescued=0    ignored=0
-east             : ok=9    changed=2    unreachable=0    failed=0    skipped=3    rescued=0    ignored=0
+east             : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+west             : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
 ~~~
 
 ## Next steps
