@@ -184,6 +184,8 @@ steps:
       [collection-requirements]: https://raw.githubusercontent.com/skupperproject/skupper-ansible/refs/heads/main/requirements.txt
     commands:
       west:
+        - run: pip install -r https://raw.githubusercontent.com/skupperproject/skupper-ansible/refs/heads/main/requirements.txt
+          apply: test
         - run: ansible-playbook -i ansible/inventory.yml ansible/setup.yml
           output: |
             [...]
