@@ -2,7 +2,7 @@
 
 # Skupper Hello World using Ansible
 
-[![main](https://github.com/fgiorgetti/skupper-example-ansible/actions/workflows/main.yaml/badge.svg)](https://github.com/fgiorgetti/skupper-example-ansible/actions/workflows/main.yaml)
+[![main](https://github.com/skupperproject/skupper-example-ansible/actions/workflows/main.yaml/badge.svg)](https://github.com/skupperproject/skupper-example-ansible/actions/workflows/main.yaml)
 
 #### A minimal HTTP application deployed across Kubernetes clusters using Skupper
 
